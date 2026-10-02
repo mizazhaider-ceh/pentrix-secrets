@@ -2,8 +2,26 @@
 
 ![Python 3.x](https://img.shields.io/badge/python-3.x-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Dependencies: zero](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)
+![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey.svg)
 
 A fast, zero-dependency secret scanner. Point it at a file or a directory and it flags exposed API keys, tokens and private keys, one finding per line as `file:line:rule`. Standard library only, so it runs anywhere Python 3 exists, including CI runners.
+
+## Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Detection rules](#detection-rules)
+- [Install](#install)
+- [Usage](#usage)
+  - [Scan a directory](#scan-a-directory)
+  - [JSON output](#json-output)
+  - [Exclude paths and scan top level only](#exclude-paths-and-scan-top-level-only)
+  - [Use in CI](#use-in-ci)
+- [When it finds something](#when-it-finds-something)
+- [False positives](#false-positives)
+- [Ethical use](#ethical-use)
+- [License](#license)
 
 ## Features
 
@@ -14,6 +32,20 @@ A fast, zero-dependency secret scanner. Point it at a file or a directory and it
 - `--exclude` patterns to skip `.git`, `node_modules`, `__pycache__`, `.venv` (skipped by default) or anything you name
 - Binary files are detected and skipped gracefully
 - CI-friendly exit codes: `1` when findings exist, `0` when clean, `2` on bad input
+
+## Screenshots
+
+Findings on the shipped test fixtures, with secrets redacted:
+
+![Scan with redacted findings](docs/images/scan-redacted.png)
+
+Machine-readable JSON output:
+
+![JSON output mode](docs/images/scan-json.png)
+
+Built-in help:
+
+![Help output](docs/images/help.png)
 
 ## Detection rules
 
@@ -41,37 +73,42 @@ No dependencies. No virtualenv. Python 3 is the only requirement.
 
 ## Usage
 
-Scan a directory (recursive by default):
+### Scan a directory
+
+Recursive by default. The repo ships planted fake secrets under `tests/fixtures/`, so you can try it safely:
 
 ```bash
-$ python3 secrets.py ./src
-./src/config/settings.py:12:GitHub Token: ghp_FAKE1234567890abcdef1234
-./src/deploy/aws.env:3:AWS Access Key ID: AKIAIOSFODNN7EXAMPLE
+$ python3 secrets.py tests/fixtures/ --redact
+tests/fixtures/aws.env:1:AWS Access Key ID: AKIA...MPLE (redacted)
+tests/fixtures/github.py:1:GitHub Token: ghp_...1234 (redacted)
+tests/fixtures/key.pem:1:Private Key Block: ----...---- (redacted)
 ```
 
-(All example keys here are obviously fake.)
+(All fixture values are planted fakes, shown here with `--redact` masking.)
 
-Scan a single file, redact secrets, output JSON:
+### JSON output
 
 ```bash
-$ python3 secrets.py .env --redact --json
+$ python3 secrets.py tests/fixtures/github.py --redact --json
 [
   {
-    "file": ".env",
-    "line": 5,
-    "rule": "Stripe Secret Key",
-    "snippet": "sk_l...7890 (redacted)"
+    "file": "tests/fixtures/github.py",
+    "line": 1,
+    "rule": "GitHub Token",
+    "snippet": "ghp_...1234 (redacted)"
   }
 ]
 ```
 
-Skip extra paths and scan top level only:
+### Exclude paths and scan top level only
 
 ```bash
 $ python3 secrets.py . --exclude .git node_modules vendor --no-recursive --redact
 ```
 
-Use in CI (fails the build when a secret is found):
+### Use in CI
+
+Fail the build when a secret is found:
 
 ```bash
 $ python3 secrets.py . --redact || echo "secrets found, failing build"
@@ -95,6 +132,10 @@ Regexes trade precision for coverage, so expect noise:
 - `--exclude` is your friend: point it at vendored code, fixtures and test data you know are safe.
 
 If a rule keeps firing on something harmless, exclude the path rather than ignoring the whole report.
+
+## Ethical use
+
+Only scan code you own or have explicit permission to test: your own projects, your employer's repos, or systems covered by a bug bounty scope or written authorization. Never point this tool at someone else's systems, leaked data, or code you are not authorized to review. The `tests/fixtures/` directory contains planted fake secrets for safe demos; do not use real credentials anywhere near this tool's examples.
 
 ## License
 
